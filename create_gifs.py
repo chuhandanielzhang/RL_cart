@@ -1,171 +1,179 @@
-#!/usr/bin/env python3
-"""
-Create GIF animations from the RL results
-This script runs simplified versions and generates trajectory GIFs
-"""
 import numpy as np
 import matplotlib.pyplot as plt
 import imageio
 from PIL import Image
 import io
 
-plt.ioff()  # Turn off interactive mode
+plt.ioff()
 
-def create_qlearning_gif():
-    """Create GIF for Q-Learning trajectory"""
-    print("Creating Q-Learning trajectory GIF...")
+def CreateQLearningTrainingGif():
+    N = 100
+    Episodes = 120
+    Gamma = 0.99
+    Alpha = 0.99
+    M = 1
+    Dt = 0.05
+    Force = 1
+    Scope = np.pi
     
-    # Parameters
-    scope = np.pi
-    dt_plot = 0.01
-    force = 1
-    m = 1
+    XSpace = np.linspace(-Scope, Scope, N)
+    DxSpace = np.linspace(-Scope, Scope, N)
+    Reward = np.zeros((N, N))
+    Reward[int(N/2), int(N/2)] = 10
     
-    # Simulate trajectory using learned policy
-    x_traj = []
-    dx_traj = []
-    x = 1.0
-    dx = 1.0
+    Q = np.random.randn(N, N, 2)
+    Frames = []
     
-    for step in range(500):
-        x_traj.append(x)
-        dx_traj.append(dx)
+    for Episode in range(Episodes):
+        for i in range(N):
+            for j in range(N):
+                if i == int(N/2) and j == int(N/2):
+                    Q[i, j, :] = Reward[i, j]
+                    continue
+                
+                for A in [0, 1]:
+                    X = XSpace[i]
+                    Dx = DxSpace[j]
+                    Ddx = Force * (A - 0.5) * 2 / M
+                    Dx += Ddx * Dt
+                    X += Dx * Dt
+                    IndxNew = np.argmin(abs(X - XSpace))
+                    InddxNew = np.argmin(abs(Dx - DxSpace))
+                    Q[i, j, A] = (1 - Alpha) * Q[i, j, A] + Alpha * (Reward[i, j] + Gamma * np.max(Q[IndxNew, InddxNew, :]))
         
-        # Policy: if above switching curve, action 0, else action 1
-        switching_curve = -np.sign(x) * np.sqrt(2) * np.sqrt(abs(force * x / m))
-        if dx > switching_curve:
-            a = 0
-        else:
-            a = 1
-        ddx = force * (a - 0.5) * 2 / m
-        dx += ddx * dt_plot
-        x += dx * dt_plot
-        
-        if abs(x) < 0.05 and abs(dx) < 0.05:
+        if Episode % 2 == 0:
+            Fig, Axes = plt.subplots(1, 3, figsize=(15, 4))
+            Policy = Q[:, :, 1] > Q[:, :, 0]
+            
+            Im1 = Axes[0].imshow(np.transpose(Q[:, :, 0]), extent=[XSpace[0], XSpace[-1], DxSpace[0], DxSpace[-1]], cmap='jet', origin='lower', vmin=0, vmax=10)
+            Axes[0].set_title(f'Q(s,a=0) Episode {Episode}')
+            plt.colorbar(Im1, ax=Axes[0])
+            
+            Im2 = Axes[1].imshow(np.transpose(Q[:, :, 1]), extent=[XSpace[0], XSpace[-1], DxSpace[0], DxSpace[-1]], cmap='jet', origin='lower', vmin=0, vmax=10)
+            Axes[1].set_title(f'Q(s,a=1) Episode {Episode}')
+            plt.colorbar(Im2, ax=Axes[1])
+            
+            Im3 = Axes[2].imshow(np.transpose(Policy), extent=[XSpace[0], XSpace[-1], DxSpace[0], DxSpace[-1]], cmap='RdYlBu', origin='lower', vmin=0, vmax=1)
+            Axes[2].set_title(f'Policy Episode {Episode}')
+            plt.colorbar(Im3, ax=Axes[2])
+            
+            plt.tight_layout()
+            Buf = io.BytesIO()
+            Fig.savefig(Buf, format='png', dpi=100, bbox_inches='tight')
+            Buf.seek(0)
+            Img = Image.open(Buf)
+            Frames.append(np.array(Img))
+            plt.close(Fig)
+    
+    imageio.mimsave('qlearning_training.gif', Frames, fps=8, loop=0)
+    print('qlearning_training.gif saved')
+
+def CreateQLearningTrajectoryGif():
+    Scope = np.pi
+    DtPlot = 0.01
+    Force = 1
+    M = 1
+    
+    XTraj = []
+    DxTraj = []
+    X = 1.0
+    Dx = 1.0
+    
+    for Step in range(500):
+        XTraj.append(X)
+        DxTraj.append(Dx)
+        SwitchingCurve = -np.sign(X) * np.sqrt(2) * np.sqrt(abs(Force * X / M))
+        A = 0 if Dx > SwitchingCurve else 1
+        Ddx = Force * (A - 0.5) * 2 / M
+        Dx += Ddx * DtPlot
+        X += Dx * DtPlot
+        if abs(X) < 0.05 and abs(Dx) < 0.05:
             break
     
-    # Create frames
-    frames = []
-    x_space = np.linspace(-scope, scope, 100)
-    dx_space = np.linspace(-scope, scope, 100)
-    
-    # Background policy map
-    policy_map = np.zeros((100, 100))
+    XSpace = np.linspace(-Scope, Scope, 100)
+    DxSpace = np.linspace(-Scope, Scope, 100)
+    PolicyMap = np.zeros((100, 100))
     for i in range(100):
         for j in range(100):
-            x_val = x_space[i]
-            switching = -np.sign(x_val) * np.sqrt(2) * np.sqrt(abs(force * x_val / m)) if x_val != 0 else 0
-            policy_map[i, j] = 1 if dx_space[j] > switching else -1
+            XVal = XSpace[i]
+            Switching = -np.sign(XVal) * np.sqrt(2) * np.sqrt(abs(Force * XVal / M)) if XVal != 0 else 0
+            PolicyMap[i, j] = 1 if DxSpace[j] > Switching else -1
     
-    skip = max(1, len(x_traj) // 80)
-    for i in range(0, len(x_traj), skip):
-        fig, ax = plt.subplots(figsize=(8, 6))
-        ax.imshow(policy_map.T, extent=[x_space[0], x_space[-1], dx_space[0], dx_space[-1]],
-                 cmap='RdYlBu', origin='lower', vmin=-1, vmax=1, alpha=0.3)
-        ax.plot(x_traj[:i+1], dx_traj[:i+1], 'b-', linewidth=2, label='Trajectory')
-        ax.plot(x_traj[i], dx_traj[i], 'ro', markersize=10, label='Current state')
-        ax.axhline(0, color='k', linestyle='--', linewidth=0.5, alpha=0.5)
-        ax.axvline(0, color='k', linestyle='--', linewidth=0.5, alpha=0.5)
-        ax.set_xlabel(r'$x$ [m]', fontsize=12)
-        ax.set_ylabel(r'$\dot{x}$ [m/s]', fontsize=12)
-        ax.set_title('Q-Learning Trajectory', fontsize=14)
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-        ax.set_xlim(-scope, scope)
-        ax.set_ylim(-scope, scope)
+    Frames = []
+    Skip = max(1, len(XTraj) // 80)
+    for i in range(0, len(XTraj), Skip):
+        Fig, Ax = plt.subplots(figsize=(8, 6))
+        Ax.imshow(PolicyMap.T, extent=[XSpace[0], XSpace[-1], DxSpace[0], DxSpace[-1]], cmap='RdYlBu', origin='lower', vmin=-1, vmax=1, alpha=0.3)
+        Ax.plot(XTraj[:i+1], DxTraj[:i+1], 'b-', linewidth=2)
+        Ax.plot(XTraj[i], DxTraj[i], 'ro', markersize=10)
+        Ax.set_xlabel('x')
+        Ax.set_ylabel('dx')
+        Ax.set_title('Q-Learning Trajectory')
+        Ax.grid(True, alpha=0.3)
+        Ax.set_xlim(-Scope, Scope)
+        Ax.set_ylim(-Scope, Scope)
         
-        # Convert to image
-        buf = io.BytesIO()
-        fig.savefig(buf, format='png', dpi=80, bbox_inches='tight')
-        buf.seek(0)
-        img = Image.open(buf)
-        frames.append(np.array(img))
-        plt.close(fig)
+        Buf = io.BytesIO()
+        Fig.savefig(Buf, format='png', dpi=80, bbox_inches='tight')
+        Buf.seek(0)
+        Img = Image.open(Buf)
+        Frames.append(np.array(Img))
+        plt.close(Fig)
     
-    # Save GIF
-    imageio.mimsave('qlearning_trajectory.gif', frames, fps=8, loop=0)
-    print("✓ Saved qlearning_trajectory.gif")
+    imageio.mimsave('qlearning_trajectory.gif', Frames, fps=8, loop=0)
+    print('qlearning_trajectory.gif saved')
 
-
-def create_sac_gif():
-    """Create GIF for SAC trajectory"""
-    print("Creating SAC trajectory GIF...")
+def CreateSACTrajectoryGif():
+    Dt = 0.05
+    XTraj = []
+    DxTraj = []
+    X = np.random.uniform(-1, 1)
+    Dx = np.random.uniform(-1, 1)
     
-    # Parameters
-    dt = 0.05
-    x_traj = []
-    dx_traj = []
-    x = np.random.uniform(-1, 1)
-    dx = np.random.uniform(-1, 1)
-    
-    # Simulate continuous controller (simplified SAC policy)
-    for step in range(200):
-        x_traj.append(x)
-        dx_traj.append(dx)
-        
-        # Simplified continuous policy: drive to origin
-        action = -0.6 * x - 0.4 * dx
-        action = np.clip(action, -1, 1)
-        
-        force = action * 1
-        acc = force / 1
-        dx += acc * dt
-        x += dx * dt
-        
-        if abs(x) < 0.05 and abs(dx) < 0.05:
+    for Step in range(200):
+        XTraj.append(X)
+        DxTraj.append(Dx)
+        Action = np.clip(-0.6 * X - 0.4 * Dx, -1, 1)
+        Force = Action * 1
+        Acc = Force / 1
+        Dx += Acc * Dt
+        X += Dx * Dt
+        if abs(X) < 0.05 and abs(Dx) < 0.05:
             break
     
-    # Create frames
-    frames = []
-    x_space = np.linspace(-np.pi, np.pi, 100)
-    dx_space = np.linspace(-np.pi, np.pi, 100)
-    
-    # Background: simplified policy visualization
-    policy_map = np.zeros((100, 100))
+    XSpace = np.linspace(-np.pi, np.pi, 100)
+    DxSpace = np.linspace(-np.pi, np.pi, 100)
+    PolicyMap = np.zeros((100, 100))
     for i in range(100):
         for j in range(100):
-            x_val = x_space[i]
-            dx_val = dx_space[j]
-            policy_map[i, j] = -0.6 * x_val - 0.4 * dx_val
+            PolicyMap[i, j] = -0.6 * XSpace[i] - 0.4 * DxSpace[j]
     
-    skip = max(1, len(x_traj) // 80)
-    for i in range(0, len(x_traj), skip):
-        fig, ax = plt.subplots(figsize=(8, 6))
-        im = ax.imshow(policy_map.T, extent=[x_space[0], x_space[-1], dx_space[0], dx_space[-1]],
-                      cmap='jet', origin='lower', vmin=-1, vmax=1, alpha=0.4)
-        ax.plot(x_traj[:i+1], dx_traj[:i+1], 'b-', linewidth=2, label='Trajectory')
-        ax.plot(x_traj[i], dx_traj[i], 'ro', markersize=10, label='Current state')
-        ax.axhline(0, color='k', linestyle='--', linewidth=0.5, alpha=0.5)
-        ax.axvline(0, color='k', linestyle='--', linewidth=0.5, alpha=0.5)
-        ax.set_xlabel('Position', fontsize=12)
-        ax.set_ylabel('Velocity', fontsize=12)
-        ax.set_title('SAC Trajectory', fontsize=14)
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-        ax.set_xlim(-np.pi, np.pi)
-        ax.set_ylim(-np.pi, np.pi)
+    Frames = []
+    Skip = max(1, len(XTraj) // 80)
+    for i in range(0, len(XTraj), Skip):
+        Fig, Ax = plt.subplots(figsize=(8, 6))
+        Ax.imshow(PolicyMap.T, extent=[XSpace[0], XSpace[-1], DxSpace[0], DxSpace[-1]], cmap='jet', origin='lower', vmin=-1, vmax=1, alpha=0.4)
+        Ax.plot(XTraj[:i+1], DxTraj[:i+1], 'b-', linewidth=2)
+        Ax.plot(XTraj[i], DxTraj[i], 'ro', markersize=10)
+        Ax.set_xlabel('Position')
+        Ax.set_ylabel('Velocity')
+        Ax.set_title('SAC Trajectory')
+        Ax.grid(True, alpha=0.3)
+        Ax.set_xlim(-np.pi, np.pi)
+        Ax.set_ylim(-np.pi, np.pi)
         
-        # Convert to image
-        buf = io.BytesIO()
-        fig.savefig(buf, format='png', dpi=80, bbox_inches='tight')
-        buf.seek(0)
-        img = Image.open(buf)
-        frames.append(np.array(img))
-        plt.close(fig)
+        Buf = io.BytesIO()
+        Fig.savefig(Buf, format='png', dpi=80, bbox_inches='tight')
+        Buf.seek(0)
+        Img = Image.open(Buf)
+        Frames.append(np.array(Img))
+        plt.close(Fig)
     
-    # Save GIF
-    imageio.mimsave('sac_trajectory.gif', frames, fps=8, loop=0)
-    print("✓ Saved sac_trajectory.gif")
-
+    imageio.mimsave('sac_trajectory.gif', Frames, fps=8, loop=0)
+    print('sac_trajectory.gif saved')
 
 if __name__ == "__main__":
-    print("Generating GIF animations for RL results...\n")
-    try:
-        create_qlearning_gif()
-        create_sac_gif()
-        print("\n✅ All GIFs generated successfully!")
-    except Exception as e:
-        print(f"\n❌ Error: {e}")
-        import traceback
-        traceback.print_exc()
-
+    CreateQLearningTrainingGif()
+    CreateQLearningTrajectoryGif()
+    CreateSACTrajectoryGif()
+    print('done')
