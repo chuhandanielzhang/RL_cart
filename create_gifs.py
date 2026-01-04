@@ -46,15 +46,15 @@ def CreateQLearningTrainingGif():
             Policy = Q[:, :, 1] > Q[:, :, 0]
             
             Im1 = Axes[0].imshow(np.transpose(Q[:, :, 0]), extent=[XSpace[0], XSpace[-1], DxSpace[0], DxSpace[-1]], cmap='jet', origin='lower', vmin=0, vmax=10)
-            Axes[0].set_title(f'Q(s,a=0) Episode {Episode}')
+            Axes[0].set_title(f'Q0 Ep{Episode}')
             plt.colorbar(Im1, ax=Axes[0])
             
             Im2 = Axes[1].imshow(np.transpose(Q[:, :, 1]), extent=[XSpace[0], XSpace[-1], DxSpace[0], DxSpace[-1]], cmap='jet', origin='lower', vmin=0, vmax=10)
-            Axes[1].set_title(f'Q(s,a=1) Episode {Episode}')
+            Axes[1].set_title(f'Q1 Ep{Episode}')
             plt.colorbar(Im2, ax=Axes[1])
             
             Im3 = Axes[2].imshow(np.transpose(Policy), extent=[XSpace[0], XSpace[-1], DxSpace[0], DxSpace[-1]], cmap='RdYlBu', origin='lower', vmin=0, vmax=1)
-            Axes[2].set_title(f'Policy Episode {Episode}')
+            Axes[2].set_title(f'Policy Ep{Episode}')
             plt.colorbar(Im3, ax=Axes[2])
             
             plt.tight_layout()
@@ -66,7 +66,6 @@ def CreateQLearningTrainingGif():
             plt.close(Fig)
     
     imageio.mimsave('qlearning_training.gif', Frames, fps=8, loop=0)
-    print('qlearning_training.gif saved')
 
 def CreateQLearningTrajectoryGif():
     Scope = np.pi
@@ -108,7 +107,7 @@ def CreateQLearningTrajectoryGif():
         Ax.plot(XTraj[i], DxTraj[i], 'ro', markersize=10)
         Ax.set_xlabel('x')
         Ax.set_ylabel('dx')
-        Ax.set_title('Q-Learning Trajectory')
+        Ax.set_title('QL Traj')
         Ax.grid(True, alpha=0.3)
         Ax.set_xlim(-Scope, Scope)
         Ax.set_ylim(-Scope, Scope)
@@ -121,7 +120,6 @@ def CreateQLearningTrajectoryGif():
         plt.close(Fig)
     
     imageio.mimsave('qlearning_trajectory.gif', Frames, fps=8, loop=0)
-    print('qlearning_trajectory.gif saved')
 
 def CreateSACTrajectoryGif():
     Dt = 0.05
@@ -155,9 +153,9 @@ def CreateSACTrajectoryGif():
         Ax.imshow(PolicyMap.T, extent=[XSpace[0], XSpace[-1], DxSpace[0], DxSpace[-1]], cmap='jet', origin='lower', vmin=-1, vmax=1, alpha=0.4)
         Ax.plot(XTraj[:i+1], DxTraj[:i+1], 'b-', linewidth=2)
         Ax.plot(XTraj[i], DxTraj[i], 'ro', markersize=10)
-        Ax.set_xlabel('Position')
-        Ax.set_ylabel('Velocity')
-        Ax.set_title('SAC Trajectory')
+        Ax.set_xlabel('x')
+        Ax.set_ylabel('dx')
+        Ax.set_title('SAC Traj')
         Ax.grid(True, alpha=0.3)
         Ax.set_xlim(-np.pi, np.pi)
         Ax.set_ylim(-np.pi, np.pi)
@@ -170,10 +168,8 @@ def CreateSACTrajectoryGif():
         plt.close(Fig)
     
     imageio.mimsave('sac_trajectory.gif', Frames, fps=8, loop=0)
-    print('sac_trajectory.gif saved')
 
 if __name__ == "__main__":
     CreateQLearningTrainingGif()
     CreateQLearningTrajectoryGif()
     CreateSACTrajectoryGif()
-    print('done')
