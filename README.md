@@ -34,7 +34,18 @@ Q-Learning is a model-free, value-based reinforcement learning algorithm that le
 
 The algorithm learns an optimal policy that guides the cart from arbitrary initial conditions to the origin. The Q-value maps and policy visualization show the learned control strategy.
 
+**Training Process (Q-value evolution):**
+<img src="qlearning_training.gif" width="800" alt="Q-Learning Training Process">
+
+The training GIF shows the evolution of Q-values during training:
+- Left: Q(s, a=0) values
+- Middle: Q(s, a=1) values  
+- Right: Policy (which action is better: a=1 > a=0)
+
+**Final Policy Trajectory:**
 <img src="qlearning_trajectory.gif" width="600" alt="Q-Learning Trajectory">
+
+The trajectory GIF shows the cart's path from an initial state to the origin using the learned policy.
 
 ### 2. Soft Actor-Critic (SAC) - Continuous Control
 
@@ -66,7 +77,12 @@ Soft Actor-Critic (SAC) is an off-policy, actor-critic deep reinforcement learni
 
 SAC learns a smooth, continuous control policy that efficiently stabilizes the cart at the origin. The policy and Q-value visualizations demonstrate the learned control strategy over the state space.
 
+**Final Policy Trajectory:**
 <img src="sac_trajectory.gif" width="600" alt="SAC Trajectory">
+
+The trajectory GIF shows the cart's path from an initial state to the origin using the learned continuous policy.
+
+*Note: Training process GIF requires PyTorch to generate. Run the training code directly to visualize the policy and Q-value evolution during training.*
 
 ## Comparison
 
