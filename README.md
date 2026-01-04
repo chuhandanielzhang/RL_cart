@@ -36,7 +36,7 @@ Q值表演化：Q(s,a=0), Q(s,a=1), Policy
 ## 运行
 
 ```bash
-python "rf learning qlearning8.18.py"
-python saccart823.py
+python qlearning_cart.py
+python sac_cart.py
 python create_gifs.py
 ```
